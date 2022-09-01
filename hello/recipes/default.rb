@@ -4,6 +4,8 @@
 #
 # Copyright:: 2018, The Authors, All Rights Reserved.
 
+default['nginx']['repo_signing_key'] = 'https://nginx.org/keys/nginx_signing.key'
+
 include_recipe 'apt'
 
 log 'Hello world'
