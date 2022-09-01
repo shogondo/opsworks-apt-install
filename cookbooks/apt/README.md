@@ -1,16 +1,8 @@
 # apt Cookbook
 
-[![Cookbook Version](https://img.shields.io/cookbook/v/apt.svg)](https://supermarket.chef.io/cookbooks/apt)
-[![CI State](https://github.com/sous-chefs/apt/workflows/ci/badge.svg)](https://github.com/sous-chefs/apt/actions?query=workflow%3Aci)
-[![OpenCollective](https://opencollective.com/sous-chefs/backers/badge.svg)](#backers)
-[![OpenCollective](https://opencollective.com/sous-chefs/sponsors/badge.svg)](#sponsors)
-[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Build Status](https://img.shields.io/travis/chef-cookbooks/apt.svg)][travis] [![Cookbook Version](https://img.shields.io/cookbook/v/apt.svg)][cookbook]
 
 This cookbook includes recipes to execute apt-get update to ensure the local APT package cache is up to date. There are recipes for managing the apt-cacher-ng caching proxy and proxy clients. It also includes a custom resource for pinning packages via /etc/apt/preferences.d.
-
-## Maintainers
-
-This cookbook is maintained by the Sous Chefs. The Sous Chefs are a community of Chef cookbook maintainers working together to maintain important cookbooks. If you’d like to know more please visit [sous-chefs.org](https://sous-chefs.org/) or come chat with us on the Chef Community Slack in [#sous-chefs](https://chefcommunity.slack.com/messages/C2V7B88SF).
 
 ## Requirements
 
@@ -23,7 +15,7 @@ May work with or without modification on other Debian derivatives.
 
 ### Chef
 
-- Chef 13.3+
+- Chef 12.9+
 
 ### Cookbooks
 
@@ -47,18 +39,18 @@ Configures the node to use a `apt-cacher-ng` server to cache apt requests. Confi
 
 ```json
 {
-  "apt": {
-    "cacher_client": {
-      "cacher_server": {
-        "host": "cache_server.mycorp.dmz",
-        "port": 1234,
-        "proxy_ssl": true,
-        "cache_bypass": {
-          "download.oracle.com": "http"
+    "apt": {
+        "cacher_client": {
+            "cacher_server": {
+                "host": "cache_server.mycorp.dmz",
+                "port": 1234,
+                "proxy_ssl": true,
+                "cache_bypass": {
+                    "download.oracle.com": "http"
+                }
+            }
         }
-      }
     }
-  }
 }
 ```
 
@@ -70,15 +62,15 @@ To do this, you need to override the `cache_bypass` attribute with an hash of re
 
 ```json
 {
-  "apt": {
-    "cacher_client": {
-      "cacher_server": {
-        "cache_bypass": {
-          "URL": "PROTOCOL"
+    "apt": {
+        "cacher_client": {
+            "cacher_server": {
+                "cache_bypass": {
+                    "URL": "PROTOCOL"
+                }
+            }
         }
-      }
     }
-  }
 }
 ```
 
@@ -86,16 +78,16 @@ For example, to prevent caching and directly connect to the repository at `downl
 
 ```json
 {
-  "apt": {
-    "cacher_client": {
-      "cacher_server": {
-        "cache_bypass": {
-          "download.oracle.com": "http",
-          "nginx.org": "https"
+    "apt": {
+        "cacher_client": {
+            "cacher_server": {
+                "cache_bypass": {
+                    "download.oracle.com": "http",
+                    "nginx.org": "https"  
+                }
+            }
         }
-      }
     }
-  }
 }
 ```
 
@@ -137,15 +129,11 @@ To pull just security updates, set `origins_patterns` to something like `["origi
 - `['apt']['unattended_upgrades']['minimal_steps']` - Split the upgrade into the smallest possible chunks. This makes the upgrade a bit slower but it has the benefit that shutdown while a upgrade is running is possible (with a small delay). Defaults to false.
 - `['apt']['unattended_upgrades']['install_on_shutdown']` - Install upgrades when the machine is shuting down instead of doing it in the background while the machine is running. This will (obviously) make shutdown slower. Defaults to false.
 - `['apt']['unattended_upgrades']['mail']` - Send email to this address for problems or packages upgrades. Defaults to no email.
-- `['apt']['unattended_upgrades']['sender']` - Send email from this address for problems or packages upgrades. Defaults to 'root'.
 - `['apt']['unattended_upgrades']['mail_only_on_error']` - If set, email will only be set on upgrade errors. Otherwise, an email will be sent after each upgrade. Defaults to true.
 - `['apt']['unattended_upgrades']['remove_unused_dependencies']` Do automatic removal of new unused dependencies after the upgrade. Defaults to false.
 - `['apt']['unattended_upgrades']['automatic_reboot']` - Automatically reboots _without confirmation_ if a restart is required after the upgrade. Defaults to false.
 - `['apt']['unattended_upgrades']['dl_limit']` - Limits the bandwidth used by apt to download packages. Value given as an integer in kb/sec. Defaults to nil (no limit).
 - `['apt']['unattended_upgrades']['random_sleep']` - Wait a random number of seconds up to this value before running daily periodic apt actions. System default is 1800 seconds (30 minutes).
-- `['apt']['unattended_upgrades']['syslog_enable']` - Enable logging to syslog. Defaults to false.
-- `['apt']['unattended_upgrades']['syslog_facility']` - Specify syslog facility. Defaults to 'daemon'.
-- `['apt']['unattended_upgrades']['dpkg_options']` An array of dpkg options to be used specifically only for unattended upgrades. Defaults to `[]` which will prevent it from being rendered from the template in the resulting file.
 
 ### Configuration for APT
 
@@ -160,6 +148,55 @@ To pull just security updates, set `origins_patterns` to something like `["origi
 ## Libraries
 
 There is an `interface_ipaddress` method that returns the IP address for a particular host and interface, used by the `cacher-client` recipe. To enable it on the server use the `['apt']['cacher_interface']` attribute.
+
+## Resources/Providers
+
+### apt_preference
+
+This resource provides an easy way to pin packages in /etc/apt/preferences.d. Although apt-pinning is quite helpful from time to time please note that Debian does not encourage its use without thorough consideration.
+
+Further information regarding apt-pinning is available via <https://wiki.debian.org/AptPreferences>.
+
+#### Actions
+
+- `:add`: creates a preferences file under /etc/apt/preferences.d
+- `:remove`: Removes the file, therefore unpin the package
+
+#### Attribute Parameters
+
+- package_name: name attribute. The name of the package
+- glob: Pin by glob() expression or regexp surrounded by /.
+- pin: The package version/repository to pin
+- pin_priority: The pinning priority aka "the highest package version wins" (required)
+
+#### Examples
+
+Pin libmysqlclient16 to version 5.1.49-3:
+
+```ruby
+apt_preference 'libmysqlclient16' do
+  pin          'version 5.1.49-3'
+  pin_priority '700'
+end
+```
+
+Unpin libmysqlclient16:
+
+```ruby
+apt_preference 'libmysqlclient16' do
+  action :remove
+end
+```
+
+Pin all packages from dotdeb.org:
+
+```ruby
+apt_preference 'dotdeb' do
+  glob         '*'
+  pin          'origin packages.dotdeb.org'
+  pin_priority '700'
+end
+```
 
 ## Usage
 
@@ -177,14 +214,6 @@ Put `recipe[apt::cacher-ng]` in the run_list for a server to provide APT caching
 
 If you want to cleanup unused packages, there is also the `apt-get autoclean` and `apt-get autoremove` resources provided for automated cleanup.
 
-## Resources
-
-### apt_preference
-
-The apt_preference resource has been moved into chef-client in Chef 13.3.
-
-See <https://docs.chef.io/resource_apt_preference.html> for usage details
-
 ### apt_repository
 
 The apt_repository resource has been moved into chef-client in Chef 12.9.
@@ -197,27 +226,28 @@ The apt_update resource has been moved into chef-client in Chef 12.7.
 
 See <https://docs.chef.io/resource_apt_update.html> for usage details
 
-## Contributors
+## Maintainers
 
-This project exists thanks to all the people who [contribute.](https://opencollective.com/sous-chefs/contributors.svg?width=890&button=false)
+This cookbook is maintained by Chef's Community Cookbook Engineering team. Our goal is to improve cookbook quality and to aid the community in contributing to cookbooks. To learn more about our team, process, and design goals see our [team documentation](https://github.com/chef-cookbooks/community_cookbook_documentation/blob/master/COOKBOOK_TEAM.MD). To learn more about contributing to cookbooks like this see our [contributing documentation](https://github.com/chef-cookbooks/community_cookbook_documentation/blob/master/CONTRIBUTING.MD), or if you have general questions about this cookbook come chat with us in #cookbok-engineering on the [Chef Community Slack](http://community-slack.chef.io/)
 
-### Backers
+## License
 
-Thank you to all our backers!
 
-![https://opencollective.com/sous-chefs#backers](https://opencollective.com/sous-chefs/backers.svg?width=600&avatarHeight=40)
+**Copyright:** 2009-2017, Chef Software, Inc.
 
-### Sponsors
+```
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-Support this project by becoming a sponsor. Your logo will show up here with a link to your website.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-![https://opencollective.com/sous-chefs/sponsor/0/website](https://opencollective.com/sous-chefs/sponsor/0/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/1/website](https://opencollective.com/sous-chefs/sponsor/1/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/2/website](https://opencollective.com/sous-chefs/sponsor/2/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/3/website](https://opencollective.com/sous-chefs/sponsor/3/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/4/website](https://opencollective.com/sous-chefs/sponsor/4/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/5/website](https://opencollective.com/sous-chefs/sponsor/5/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/6/website](https://opencollective.com/sous-chefs/sponsor/6/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/7/website](https://opencollective.com/sous-chefs/sponsor/7/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/8/website](https://opencollective.com/sous-chefs/sponsor/8/avatar.svg?avatarHeight=100)
-![https://opencollective.com/sous-chefs/sponsor/9/website](https://opencollective.com/sous-chefs/sponsor/9/avatar.svg?avatarHeight=100)
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+[cookbook]: https://community.chef.io/cookbooks/apt
+[travis]: https://travis-ci.org/chef-cookbooks/apt

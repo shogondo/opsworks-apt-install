@@ -19,4 +19,4 @@ chef_version '>= 12.14' if respond_to?(:chef_version)
 #
 # source_url 'https://github.com/<insert_org_here>/nginx'
 
-depends 'apt', '< 7.0'
+depends 'apt'
